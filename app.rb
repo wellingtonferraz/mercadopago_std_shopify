@@ -20,7 +20,7 @@ class MercadoPagoStd < Sinatra::Base
   def fields
     @fields ||= request.params.select {|k, v| k.start_with? 'x_'}
   end
-  
+
   def sign(fields, key=@key)
     Digest::HMAC.hexdigest(fields.sort.join, key, Digest::SHA256)
   end
@@ -77,11 +77,15 @@ class MercadoPagoStd < Sinatra::Base
     payment = mp.get_payment(params['collection_id'])
     action = 'failed'
 
+    p "Payment status in callback: #{payment['response']['collection']['status']}"
+
     case payment['response']['collection']['status']
     when 'approved'
       action = 'completed'
     when 'pending'
+      action = 'pending'
     when 'in_process'
+      action = 'pending'
     when 'rejected'
       action = 'pending'
     else
@@ -113,8 +117,8 @@ class MercadoPagoStd < Sinatra::Base
     redirect_url = Addressable::URI.parse(additional_info['x_url_complete'])
     redirect_url.query_values = payload
 
-    # p additional_info['x_url_complete']
-    # p payload
+    p "Url Posted: #{additional_info['x_url_complete']}"
+    p "Json Posted: #{payload.to_json}"
 
     response = HTTParty.post(additional_info['x_url_complete'], body: payload)
 
@@ -125,6 +129,30 @@ class MercadoPagoStd < Sinatra::Base
       result[:error] = response
     end
 
+
+  end
+
+  get '/new_payload' do
+    x_url_complete = "https://checkout.shopify.com/13084163/checkouts/857771d326e49c2b3e512c93835a7576/offsite_gateway_callback"
+
+    ts = Time.now.utc.iso8601
+
+    result = {timestamp: ts}
+
+    payload = {
+      'x_account_id'        => "5065100305679755",
+      'x_reference'         => "7987082118",
+      'x_currency'          => "BRL",
+      'x_test'              => "false",
+      'x_amount'            => "76.50",
+      'x_result'            => "completed",
+      'x_gateway_reference' => SecureRandom.hex,
+      'x_timestamp'         => ts
+    }
+
+    payload['x_signature'] = sign(payload)
+
+    response = HTTParty.post(x_url_complete, body: payload)
 
   end
 
