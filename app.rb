@@ -87,7 +87,7 @@ class MercadoPagoStd < Sinatra::Base
     when 'in_process'
       action = 'pending'
     when 'rejected'
-      action = 'pending'
+      action = 'failed'
     else
       action = 'failed'
     end
