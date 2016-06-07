@@ -33,8 +33,7 @@ class MercadoPagoStd < Sinatra::Base
   def process_merchant_order
   end
   
-  def 
-
+   
   get '/' do
     "Mercado Pago Teste STD Checkout"
   end
@@ -44,35 +43,40 @@ class MercadoPagoStd < Sinatra::Base
     p "Params #{request.params}"
     p "Host #{request.host}"
     
-    preference = MercadoPago::Preference.new({
-      external_reference: fields['x_reference'],
-      items: [
-        {
-          title: fields['x_description'],
-          quantity: 1,
-          unit_price: fields['x_amount'].to_f
-        }
-      ],
-      payer: {
-        name: fields['x_customer_first_name'],
-        surname: fields['x_customer_last_name'],
-        email: fields['x_customer_email']
-      },
-      auto_return: 'all',
-      back_urls: {
+    preference = MercadoPago::Preference.new
+    preference.external_reference = fields['x_reference']
+    preference.auto_return = 'all'
+    preference.back_urls = {
         success: "#{request.host}/callback",
         pending: "#{request.host}/callback",
         failure: "#{request.host}/callback"
-      },
-      additional_info: {
+    }
+    preference.additional_info = {
         x_account_id: fields['x_account_id'],
         x_reference: fields['x_reference'],
         x_currency: fields['x_currency'],
         x_test: fields['x_test'],
         x_amount: fields['x_amount'],
         x_url_complete: fields['x_url_complete']
-      }
+      }  
+    
+    item = MercadoPago::Item.new({
+      title: fields['x_description'],
+      quantity: 1,
+      unit_price: fields['x_amount'].to_f
     })
+    
+    payer = MercadoPago::Payer.new({
+        name: fields['x_customer_first_name'],
+        surname: fields['x_customer_last_name'],
+        email: fields['x_customer_email']
+    })
+        
+    preference.items = [item]
+    preference.payer = payer
+ 
+    pp preference.to_json
+    
  
     preference.save 
     redirect preference.init_point
@@ -99,6 +103,8 @@ class MercadoPagoStd < Sinatra::Base
 
 
     preference = MercadoPago::Preference.load(params['preference_id'])
+    
+    
 
     additional_info = JSON.parse preference.additional_info
 
