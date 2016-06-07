@@ -7,6 +7,9 @@ gem 'json'
 gem 'addressable'
 gem 'mercadopago-sdk'
 
+gem 'mercadopago', github: 'joelibaceta/mp-sdk-ruby'
+
+
 group :test do
   gem 'rack-test'
 end
