@@ -30,7 +30,8 @@ class MercadoPagoStd < Sinatra::Base
     Digest::HMAC.hexdigest(fields.sort.join, key, Digest::SHA256)
   end
   
-  def process_merchant_order
+  def process_merchant_order      
+#https://checkout.shopify.com/13322039/checkouts/57fd979109c66f4cc84cb57bf9798e17/offsite_gateway_callback?x_account_id=5065100305679755&x_amount=147.99&x_currency=BRL&x_gateway_reference=1b25e778575c6e768bab4141fc0651e7&x_reference=7737824131&x_result=completed&x_signature=e2b8f45b27e0966cf2e9f20f7a235e6b93666ff51606ae59ede7653f62e0b2ce&x_test=false&x_timestamp=2016-06-07T15%3A26%3A11Z
   end
   
    
@@ -84,29 +85,15 @@ class MercadoPagoStd < Sinatra::Base
 
 
   get '/callback' do 
-    
-    payment = MercadoPago::Payment.load(params[:id])
-    action = 'failed'
-
-    case payment['response']['collection']['status']
-    when 'approved'
-      action = 'completed'
-    when 'pending'
-      action = 'pending'
-    when 'in_process'
-      action = 'pending'
-    when 'rejected'
-      action = 'failed'
-    else
-      action = 'failed'
-    end
-
-
-    preference = MercadoPago::Preference.load(params['preference_id'])
-    
+      
     
 
-    additional_info = JSON.parse preference.additional_info
+    MercadoPago::Preference.load(params[:preference_id])
+    preference = MercadoPago::Preference.find_by_id(params[:preference_id])
+    
+    pp preference.to_json
+    
+    additional_info = eval(preference.additional_info)
 
     ts = Time.now.utc.iso8601
 
@@ -123,22 +110,36 @@ class MercadoPagoStd < Sinatra::Base
       'x_timestamp'         => ts
     }
 
-    payload['x_signature'] = sign(payload)
+    payload[:x_signature] = sign(payload)
 
-    redirect_url = Addressable::URI.parse(additional_info['x_url_complete'])
-    redirect_url.query_values = payload
-
-    p "Url Posted: #{additional_info['x_url_complete']}"
-    p "Json Posted: #{payload.to_json}"
-
-    response = HTTParty.post(additional_info['x_url_complete'], body: payload)
-
-    if response.code == 200
-      redirect redirect_url
-      # result[:redirect] = redirect_url
-    else
-      result[:error] = response
+    redirect_url = Addressable::URI.parse(additional_info[:x_url_complete])
+    redirect_url.query_values = payload 
+    
+    case params[:collection_status]
+      when 'approved'
+        action = 'completed' 
+        response = HTTParty.post(additional_info[:x_url_complete], body: payload)
+        if response.code == 200
+          redirect redirect_url
+          # result[:redirect] = redirect_url
+        else
+          result[:error] = response
+        end
+      when 'pending'
+        
+        action = 'pending'
+      when 'in_process'
+        
+        action = 'pending'
+      when 'rejected'
+        
+        action = 'failed' 
+      else
+        
+        action = 'failed'
     end
+    
+    
 
 
   end
