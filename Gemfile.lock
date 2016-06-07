@@ -32,8 +32,6 @@ GEM
     json (1.8.3)
     launchy (2.4.3)
       addressable (~> 2.3)
-    mercadopago-sdk (0.3.4)
-      json
     mime-types (1.25.1)
     minitest (5.9.0)
     multi_json (1.11.2)
@@ -65,12 +63,8 @@ DEPENDENCIES
   httparty
   json
   mercadopago!
-  mercadopago-sdk
   rack-test
   sinatra
-
-RUBY VERSION
-   ruby 2.1.8p440
 
 BUNDLED WITH
    1.12.5
