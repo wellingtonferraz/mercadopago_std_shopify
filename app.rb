@@ -11,6 +11,8 @@ require 'pp'
 class MercadoPagoStd < Sinatra::Base
 
   set :bind, '0.0.0.0'
+  
+  
 
   def initialize(base_path: '')
     @base_path = base_path
@@ -30,9 +32,7 @@ class MercadoPagoStd < Sinatra::Base
     Digest::HMAC.hexdigest(fields.sort.join, key, Digest::SHA256)
   end
   
-  def process_merchant_order      
-#https://checkout.shopify.com/13322039/checkouts/57fd979109c66f4cc84cb57bf9798e17/offsite_gateway_callback?x_account_id=5065100305679755&x_amount=147.99&x_currency=BRL&x_gateway_reference=1b25e778575c6e768bab4141fc0651e7&x_reference=7737824131&x_result=completed&x_signature=e2b8f45b27e0966cf2e9f20f7a235e6b93666ff51606ae59ede7653f62e0b2ce&x_test=false&x_timestamp=2016-06-07T15%3A26%3A11Z
-  end
+  
   
    
   get '/' do
@@ -86,26 +86,34 @@ class MercadoPagoStd < Sinatra::Base
 
   get '/callback' do 
       
-    
+    ACTION = {'approved'=>'completed', 
+              'pending' => 'pending', 
+              'in_process' => 'pending', 
+              'rejected' => 'failed'}
 
-    MercadoPago::Preference.load(params[:preference_id])
-    preference = MercadoPago::Preference.find_by_id(params[:preference_id])
+    MercadoPago::Preference.load(params[:preference_id]) do |preference|
+      preference = preference
+    end 
     
-    pp preference.to_json
+    MercadoPago::Payment.load(params[:collection_id]) do |collection|
+      pp collection
+    end
+    
+    
     
     additional_info = eval(preference.additional_info)
 
     ts = Time.now.utc.iso8601
 
     result = {timestamp: ts}
-
+     
     payload = {
       'x_account_id'        => additional_info['x_account_id'],
       'x_reference'         => additional_info['x_reference'],
       'x_currency'          => additional_info['x_currency'],
       'x_test'              => additional_info['x_test'],
       'x_amount'            => additional_info['x_amount'],
-      'x_result'            => action,
+      'x_result'            => (ACTION[params[:collection_status]] || 'failed'),
       'x_gateway_reference' => SecureRandom.hex,
       'x_timestamp'         => ts
     }
@@ -116,30 +124,13 @@ class MercadoPagoStd < Sinatra::Base
     redirect_url.query_values = payload 
     
     case params[:collection_status]
-      when 'approved'
-        action = 'completed' 
-        response = HTTParty.post(additional_info[:x_url_complete], body: payload)
-        if response.code == 200
-          redirect redirect_url
-          # result[:redirect] = redirect_url
-        else
-          result[:error] = response
-        end
-      when 'pending'
-        
-        action = 'pending'
-      when 'in_process'
-        
-        action = 'pending'
-      when 'rejected'
-        
-        action = 'failed' 
-      else
-        
-        action = 'failed'
+    when 'approved' || 'rejected'
+      response = HTTParty.post(additional_info[:x_url_complete], body: payload)
+      redirect redirect_url     if response.code == 200
+      result[:error] = response unless response.code == 200 
+    when 'pending' || 'in_process'
+      
     end
-    
-    
 
 
   end
@@ -150,16 +141,44 @@ class MercadoPagoStd < Sinatra::Base
     
     notification = MercadoPago::Notification.new(params)  
     
-    if params[:topic] == "merchant_order"
-      begin
-        MercadoPago::MerchantOrder.load(params[:id]) do |merchant_order|
-          process_merchant_order(merchant_order)
+    merchant_order = nil
+      
+    begin
+      if params[:topic] == "payment"
+        MercadoPago::Payment.load(params[:id]) do |payment|
+        MercadoPago::MerchantOrder.load(payment.collection["merchant_order_id"]) do |mo|
+          merchant_order= mo;
         end
-      rescue
-        # if the merchant order doesnt exist
+        
+      elsif params[:topic] == "merchant_order" 
+        MercadoPago::MerchantOrder.load(params[:id]) do |mo|
+          merchant_order= mo;
+        end
       end
+       
+      paid_amount = 0
+      
+      paid_amount = merchant_order.payments.map{ |payment| payment.transaction_amount}.reduce(:+) 
+      
+      MercadoPago::MerchantOrder.load(payment.collection["merchant_order_id"]) do |merchant_order|
+        
+      if paid_amount >= merchant_order.total_amount
+        MercadoPago::Preference.load(merchant_order.preference_id) do |preference|
+          additional_info = eval(preference.additional_info)
+        end
+      else
+        
+      end 
+         
+    rescue
+      # if the merchant order doesnt exist
     end
+
     
+  end
+  
+  def process_merchant_order      
+#https://checkout.shopify.com/13322039/checkouts/57fd979109c66f4cc84cb57bf9798e17/offsite_gateway_callback?x_account_id=5065100305679755&x_amount=147.99&x_currency=BRL&x_gateway_reference=1b25e778575c6e768bab4141fc0651e7&x_reference=7737824131&x_result=completed&x_signature=e2b8f45b27e0966cf2e9f20f7a235e6b93666ff51606ae59ede7653f62e0b2ce&x_test=false&x_timestamp=2016-06-07T15%3A26%3A11Z
   end
 
   get '/new_payload' do
@@ -183,6 +202,8 @@ class MercadoPagoStd < Sinatra::Base
     payload['x_signature'] = sign(payload)
 
     response = HTTParty.post(x_url_complete, body: payload)
+    
+    
 
   end
 
