@@ -38,6 +38,40 @@ class MercadoPagoStd < Sinatra::Base
     "Mercado Pago Teste STD Checkout"
   end
 
+  def get_owner_id(client_id)
+    owner = HTTParty.get('https://api.mercadolibre.com/applications/'+client_id.to_s) 
+    if owner.code.to_i === 200
+      owner_id = owner['owner_id']
+    end
+    owner_id
+  end
+
+  def get_secret_key(owner_id, client_id)
+    url_internal = 'https://internal.mercadolibre.com/applications/'+client_id.to_s+"?caller.id=" + owner_id.to_s + "&caller.status=ACTIVE&caller.scopes=crud_app"
+    puts "====url====" + url_internal
+
+    response_secret_key = HTTParty.get(url_internal)  
+
+    puts "====response_secret_key====" + response_secret_key.to_s    
+
+    if response_secret_key.code.to_i === 200
+      secret_key = response_secret_key['secret_key']
+    end
+
+    #internal.mercadolibre.com/applications/5065100305679755?caller.id=201657914&caller.status=ACTIVE&caller.scopes=crud_app
+    secret_key
+  end
+
+  get '/clientSecret/:client_id' do
+    client_id = "#{params['client_id']}"
+    owner_id = get_owner_id(client_id)
+    puts ("owner_id " + owner_id.to_s)
+    secret_key = get_secret_key(owner_id, client_id);
+
+    "owner_id " +  secret_key.to_s + "!!"
+  end
+
+
   post '/' do
     p "-------------------------------------------------------"
     p "Params #{request.params}"
