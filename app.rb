@@ -4,7 +4,8 @@ require 'sinatra'
 require 'httparty'
 require 'json'
 require 'addressable/uri'
-require 'mercadopago'
+require 'mercadopago' 
+require 'pp'
 
 
 class MercadoPagoStd < Sinatra::Base
@@ -14,6 +15,10 @@ class MercadoPagoStd < Sinatra::Base
   def initialize(base_path: '')
     @base_path = base_path
     @key = 'GEO8BxYT5ifSOp9Y3ys7wGiwXcNu8h0O'
+    
+    MercadoPago::Settings.CLIENT_ID     = "5065100305679755"
+    MercadoPago::Settings.CLIENT_SECRET = "GEO8BxYT5ifSOp9Y3ys7wGiwXcNu8h0O"
+    
     super
   end
 
@@ -24,6 +29,11 @@ class MercadoPagoStd < Sinatra::Base
   def sign(fields, key=@key)
     Digest::HMAC.hexdigest(fields.sort.join, key, Digest::SHA256)
   end
+  
+  def process_merchant_order
+  end
+  
+  def 
 
   get '/' do
     "Mercado Pago Teste STD Checkout"
@@ -33,8 +43,8 @@ class MercadoPagoStd < Sinatra::Base
     p "-------------------------------------------------------"
     p "Params #{request.params}"
     p "Host #{request.host}"
-    mp = MercadoPago.new('5065100305679755', 'GEO8BxYT5ifSOp9Y3ys7wGiwXcNu8h0O')
-    preference_data = {
+    
+    preference = MercadoPago::Preference.new({
       external_reference: fields['x_reference'],
       items: [
         {
@@ -62,22 +72,17 @@ class MercadoPagoStd < Sinatra::Base
         x_amount: fields['x_amount'],
         x_url_complete: fields['x_url_complete']
       }
-    }
-
-    preference = mp.create_preference(preference_data)
-
-
-    redirect preference['response']['init_point']
+    })
+ 
+    preference.save 
+    redirect preference.init_point
   end
 
 
-  get '/callback' do
-    mp = MercadoPago.new('5065100305679755', 'GEO8BxYT5ifSOp9Y3ys7wGiwXcNu8h0O')
-
-    payment = mp.get_payment(params['collection_id'])
+  get '/callback' do 
+    
+    payment = MercadoPago::Payment.load(params[:id])
     action = 'failed'
-
-    p "Payment status in callback: #{payment['response']['collection']['status']}"
 
     case payment['response']['collection']['status']
     when 'approved'
@@ -93,9 +98,9 @@ class MercadoPagoStd < Sinatra::Base
     end
 
 
-    preference = mp.get_preference(params['preference_id'])
+    preference = MercadoPago::Preference.load(params['preference_id'])
 
-    additional_info = JSON.parse preference['response']['additional_info']
+    additional_info = JSON.parse preference.additional_info
 
     ts = Time.now.utc.iso8601
 
@@ -130,6 +135,24 @@ class MercadoPagoStd < Sinatra::Base
     end
 
 
+  end
+  
+  get '/ipn' do
+    path, query   = env['REQUEST_PATH'], env['QUERY_STRING'] 
+    params = query.split('&').map{|q| {q.split('=')[0].to_sym => q.split('=')[1]}}.reduce Hash.new, :merge
+    
+    notification = MercadoPago::Notification.new(params)  
+    
+    if params[:topic] == "merchant_order"
+      begin
+        MercadoPago::MerchantOrder.load(params[:id]) do |merchant_order|
+          process_merchant_order(merchant_order)
+        end
+      rescue
+        # if the merchant order doesnt exist
+      end
+    end
+    
   end
 
   get '/new_payload' do
