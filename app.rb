@@ -136,7 +136,7 @@ class MercadoPagoStd < Sinatra::Base
       redirect redirect_url     if response.code == 200
       result[:error] = response unless response.code == 200 
     when 'pending' || 'in_process'
-      
+      # Do
     end
 
 
@@ -160,45 +160,48 @@ class MercadoPagoStd < Sinatra::Base
     begin
       if params[:topic] == "payment"
         MercadoPago::Payment.load(params[:id]) do |payment|
-        MercadoPago::MerchantOrder.load(payment.collection["merchant_order_id"]) do |mo|
-          merchant_order= mo;
+          MercadoPago::MerchantOrder.load(payment.collection["merchant_order_id"]) do |mo|
+            merchant_order= mo
+          end
         end
-        
-      elsif params[:topic] == "merchant_order" 
+      end  
+      
+      if params[:topic] == "merchant_order" 
         MercadoPago::MerchantOrder.load(params[:id]) do |mo|
-          merchant_order= mo;
-        end
+          merchant_order= mo
+        end 
       end
         
       paid = merchant_order.payments.map{ |p| p.status == 'approved' ? p.transaction_amount : 0}.reduce(:+) 
       
       MercadoPago::MerchantOrder.load(payment.collection["merchant_order_id"]) do |merchant_order|
         
-      if paid >= merchant_order.total_amount # If a payments is completed 
-        MercadoPago::Preference.load(merchant_order.preference_id) do |preference|
+        if paid >= merchant_order.total_amount # If a payments is completed 
+          MercadoPago::Preference.load(merchant_order.preference_id) do |preference|
           
-        additional_info = eval(preference.additional_info)
-        ts              = Time.now.utc.iso8601
+            additional_info = eval(preference.additional_info)
+            ts              = Time.now.utc.iso8601
          
-        payload = {
-          'x_account_id'        => additional_info['x_account_id'],
-          'x_reference'         => additional_info['x_reference'],
-          'x_currency'          => additional_info['x_currency'],
-          'x_test'              => additional_info['x_test'],
-          'x_amount'            => additional_info['x_amount'],
-          'x_result'            => (ACTION[params[:collection_status]] || 'failed'),
-          'x_gateway_reference' => SecureRandom.hex,
-          'x_timestamp'         => ts
-        }
+            payload = {
+              'x_account_id'        => additional_info['x_account_id'],
+              'x_reference'         => additional_info['x_reference'],
+              'x_currency'          => additional_info['x_currency'],
+              'x_test'              => additional_info['x_test'],
+              'x_amount'            => additional_info['x_amount'],
+              'x_result'            => (ACTION[params[:collection_status]] || 'failed'),
+              'x_gateway_reference' => SecureRandom.hex,
+              'x_timestamp'         => ts
+            }
         
-        redirect_url              = Addressable::URI.parse(additional_info[:x_url_complete])
-        redirect_url.query_values = payload 
+            redirect_url              = Addressable::URI.parse(additional_info[:x_url_complete])
+            redirect_url.query_values = payload 
          
-        response = HTTParty.post(additional_info[:x_url_complete], body: payload)
+            response = HTTParty.post(additional_info[:x_url_complete], body: payload)
         
-        redirect redirect_url     if response.code      == 200
-        result[:error] = response unless response.code  == 200 
-          
+            redirect redirect_url     if response.code      == 200
+            result[:error] = response unless response.code  == 200 
+          end
+        end
       end 
          
     rescue
