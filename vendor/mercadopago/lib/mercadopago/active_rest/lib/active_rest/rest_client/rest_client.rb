@@ -70,7 +70,7 @@ module ActiveREST
     def http_param(param, value); @@default_connection[param] = value; end
     module_function :http_param
 
-    def config(&block); eval(&block); end
+    def config(&block); instance_eval &block; end
     module_function :config
     
     
