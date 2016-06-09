@@ -1,5 +1,6 @@
 require 'yaml'
 require 'logger'
+require_relative 'active_rest/lib/active_rest'
 
 module MercadoPago
   module Settings
@@ -11,7 +12,9 @@ module MercadoPago
         CLIENT_SECRET:  "",
         ACCESS_TOKEN:   "", 
         notification_url:   "", 
-        sandbox_mode: true
+        sandbox_mode: true,
+        proxy_addr: "",
+        proxy_port: "",
     }
     
     def self.configuration
@@ -55,11 +58,27 @@ module MercadoPago
       https.ca_file = File.dirname(__FILE__) + '/ca-bundle.crt'
          
       req = Net::HTTP::Post.new(uri.path, initheader = {'Content-Type' =>'application/json'}) 
+      proxy, response = nil, nil
       
       req.set_form_data(params)
-      res = https.request(req) 
       
-      return res.is_a?(Net::HTTPSuccess) ? res.body : nil 
+      if @@config[:proxy_addr].to_s != ""
+        
+        ActiveREST::RESTClient.config do
+          set_http_param :proxy_addr, @@config[:proxy_addr]
+          set_http_param :proxy_port, @@config[:proxy_port]
+        end
+        
+        proxy = Net::HTTP::Proxy(@@config[:proxy_addr], @@config[:proxy_port])
+         
+        response = proxy.start(uri) do |http|
+          http.request(req)
+        end
+      else
+        response = http.request(req)
+      end 
+      
+      return response.is_a?(Net::HTTPSuccess) ? res.body : nil 
     end
 
     # Method missing overwrite to allow call to keys in @config as a method
