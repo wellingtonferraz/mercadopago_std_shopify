@@ -92,10 +92,10 @@ class MercadoPagoStd < Sinatra::Base
     #client_id     = fields['x_account_id']
     #client_secret = get_secret_key(get_owner_id(client_id), client_id)
     
-    ActiveREST::RESTClient.config do
-      http_param :proxy_addr, ""
-      http_param :proxy_port, "" 
-    end
+    
+    
+    MercadoPago::Settings.proxy_addr    = "http://127.0.0.1"
+    MercadoPago::Settings.proxy_port    = "4567"
     
     MercadoPago::Settings.CLIENT_ID     = '6961738956989181'#client_id
     MercadoPago::Settings.CLIENT_SECRET = 'vPrAA7HX3zFFkhhUEv7LXHOcVqbeSjbH'#client_secret
