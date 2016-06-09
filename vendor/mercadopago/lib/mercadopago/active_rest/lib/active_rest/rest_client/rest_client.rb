@@ -38,19 +38,31 @@ module ActiveREST
       
       request = VERB_MAP[verb].new(uri, initheader = {'Content-Type' =>'application/json'})
       
+      proxy = nil
+      
       if connection_params[:proxy_addr].to_s != ""
-        request = VERB_MAP[verb].new(uri, initheader = {'Content-Type' =>'application/json'}, connection_params[:proxy_addr], connection_params[:proxy_port])
+        request = VERB_MAP[verb].new(uri, initheader = {'Content-Type' =>'application/json'})
+        
+        proxy = Net::HTTP::Proxy(connection_params[:proxy_addr], connection_params[:proxy_port])
+      else
+        request = VERB_MAP[verb].new(uri, initheader = {'Content-Type' =>'application/json'})
+        
       end
       
 
-      request = VERB_MAP[verb].new(uri, initheader = {'Content-Type' =>'application/json'})
-      
-      headers.each do |field, value|
-        request.add_field(field, value)
-      end
+      headers.map{|field, value| request.add_field(field, value)} 
       
       request.body = data if data != {}
-      response = http.request(request)
+      
+      
+       if connection_params[:proxy_addr].to_s != ""
+         response = proxy.start(uri) do |http|
+           http.request(request)
+         end
+       else
+         response = http.request(request)
+       end
+      
 
       if !(response.is_a?(Net::HTTPSuccess))
         warn response.body
