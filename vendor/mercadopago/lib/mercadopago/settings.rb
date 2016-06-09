@@ -78,7 +78,7 @@ module MercadoPago
         response = http.request(req)
       end 
       
-      return response.is_a?(Net::HTTPSuccess) ? res.body : nil 
+      return response.is_a?(Net::HTTPSuccess) ? response.body : nil 
     end
 
     # Method missing overwrite to allow call to keys in @config as a method
