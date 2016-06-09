@@ -14,7 +14,7 @@ module MercadoPago
         notification_url:   "", 
         sandbox_mode: true,
         proxy_addr: "",
-        proxy_port: "",
+        proxy_port: ""
     }
     
     def self.configuration
@@ -55,7 +55,7 @@ module MercadoPago
       https = Net::HTTP.new(uri.host, uri.port)
 
       
-      response = nil
+      proxy, response = nil, nil
        
       if @@config[:proxy_addr].to_s != "" 
         ActiveREST::RESTClient.config do
@@ -63,9 +63,14 @@ module MercadoPago
           set_http_param :proxy_port, @@config[:proxy_port]
         end
         
-        https = Net::HTTP::Proxy(@@config[:proxy_addr], @@config[:proxy_port]).new(uri.host, uri.port) 
+        proxy = Net::HTTP::Proxy(@@config[:proxy_addr], @@config[:proxy_port].to_i)
         
-      end 
+        https = proxy.new(uri.host, uri.port) 
+        
+      end
+      
+      p "PROXY: #{@@config[:proxy_port]}"
+      p "HTTPS: #{https.instance_variable_get("@proxy_address")}" 
       
       https.use_ssl = true 
       https.ca_file = File.dirname(__FILE__) + '/ca-bundle.crt'
