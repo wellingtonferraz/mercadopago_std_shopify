@@ -92,10 +92,17 @@ class MercadoPagoStd < Sinatra::Base
     #client_id     = fields['x_account_id']
     #client_secret = get_secret_key(get_owner_id(client_id), client_id)
     
+    ActiveREST::RESTClient.config do
+      http_param :proxy_addr, ""
+      http_param :proxy_port, "" 
+    end
+    
     MercadoPago::Settings.CLIENT_ID     = '6961738956989181'#client_id
     MercadoPago::Settings.CLIENT_SECRET = 'vPrAA7HX3zFFkhhUEv7LXHOcVqbeSjbH'#client_secret
     
     MercadoPago::Preference.set_custom_header("X-Tracking-Id", "platform:desktop,type:shopify,so:1.0")
+    
+    
     
     preference = MercadoPago::Preference.new
     preference.external_reference = fields['x_reference']
@@ -135,6 +142,11 @@ class MercadoPagoStd < Sinatra::Base
 
 
   get '/callback' do 
+    
+    ActiveREST::RESTClient.config do
+      http_param :proxy_addr, ""
+      http_param :proxy_port, "" 
+    end
     
     MercadoPago::Settings.CLIENT_ID     = '6961738956989181'#client_id
     MercadoPago::Settings.CLIENT_SECRET = 'vPrAA7HX3zFFkhhUEv7LXHOcVqbeSjbH'#client_secret
@@ -207,6 +219,11 @@ class MercadoPagoStd < Sinatra::Base
      
     #client_id     = params[:x_account_id]
     #client_secret = get_secret_key(get_owner_id(client_id), client_id)
+    
+    ActiveREST::RESTClient.config do
+      http_param :proxy_addr, ""
+      http_param :proxy_port, "" 
+    end
     
     MercadoPago::Settings.CLIENT_ID     = '6961738956989181'#client_id
     MercadoPago::Settings.CLIENT_SECRET = 'vPrAA7HX3zFFkhhUEv7LXHOcVqbeSjbH'#client_secret
