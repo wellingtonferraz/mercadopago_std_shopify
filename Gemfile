@@ -6,7 +6,7 @@ gem 'httparty'
 gem 'json'
 gem 'addressable' 
 
-gem 'mercadopago', path: './vendor/mp-sdk-ruby'
+gem 'mercadopago', path: './vendor/mercadopago'
 
 
 group :test do
