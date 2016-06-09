@@ -223,6 +223,11 @@ module ActiveREST
   end
   module_function :set_param
   
+  def set_url_param(k, v)
+    params_variables = class_variable_get("@@global_rest_params")
+    params_variables[k] = v 
+  end
+  
   def set_custom_header(param, value)
     params_variables = class_variable_get("@@custom_headers")
     params_variables[param] = value 

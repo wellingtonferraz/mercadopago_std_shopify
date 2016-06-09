@@ -14,7 +14,7 @@ module MercadoPago
         notification_url:   "", 
         sandbox_mode: true,
         proxy_addr: "",
-        proxy_port: "",
+        proxy_port: ""
     }
     
     def self.configuration
@@ -54,31 +54,33 @@ module MercadoPago
                 
       https = Net::HTTP.new(uri.host, uri.port)
 
-      https.use_ssl = true 
-      https.ca_file = File.dirname(__FILE__) + '/ca-bundle.crt'
-         
-      req = Net::HTTP::Post.new(uri.path, initheader = {'Content-Type' =>'application/json'}) 
+      
       proxy, response = nil, nil
-      
-      req.set_form_data(params)
-      
-      if @@config[:proxy_addr].to_s != ""
-        
+       
+      if @@config[:proxy_addr].to_s != "" 
         ActiveREST::RESTClient.config do
           set_http_param :proxy_addr, @@config[:proxy_addr]
           set_http_param :proxy_port, @@config[:proxy_port]
         end
         
-        proxy = Net::HTTP::Proxy(@@config[:proxy_addr], @@config[:proxy_port])
-         
-        response = proxy.start(uri) do |http|
-          http.request(req)
-        end
-      else
-        response = http.request(req)
-      end 
+        proxy = Net::HTTP::Proxy(@@config[:proxy_addr], @@config[:proxy_port].to_i)
+        
+        https = proxy.new(uri.host, uri.port) 
+        
+      end
       
-      return response.is_a?(Net::HTTPSuccess) ? res.body : nil 
+      p "PROXY: #{@@config[:proxy_port]}"
+      p "HTTPS: #{https.instance_variable_get("@proxy_address")}" 
+      
+      https.use_ssl = true 
+      https.ca_file = File.dirname(__FILE__) + '/ca-bundle.crt'
+         
+      req = Net::HTTP::Post.new(uri.path, initheader = {'Content-Type' =>'application/json'}) 
+      req.set_form_data(params)
+      
+      response = https.request(req)
+       
+      return response.is_a?(Net::HTTPSuccess) ? response.body : nil 
     end
 
     # Method missing overwrite to allow call to keys in @config as a method
