@@ -1,6 +1,5 @@
-GIT
-  remote: git://github.com/joelibaceta/mp-sdk-ruby.git
-  revision: b240213be7cc33da40958afaef16356c96973b52
+PATH
+  remote: ./vendor/mp-sdk-ruby
   specs:
     mercadopago (1.0.1)
       activesupport

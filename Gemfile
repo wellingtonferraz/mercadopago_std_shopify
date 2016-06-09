@@ -6,7 +6,7 @@ gem 'httparty'
 gem 'json'
 gem 'addressable' 
 
-gem 'mercadopago',  github: 'joelibaceta/mp-sdk-ruby'
+gem 'mercadopago', path: './vendor/mp-sdk-ruby'
 
 
 group :test do
